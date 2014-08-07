@@ -5,6 +5,7 @@ import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.config.Configuration;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.Mod;
@@ -13,18 +14,30 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.EntityRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
 
-@Mod(modid = Core.modid, name = "Compressed Blocks", version = "1.0.0.0")
+@Mod(modid = Core.modid, name = "Compressed Blocks", version = "1.0.1.0")
 
 public class Core
 {
 	public static final String modid = "compressedblocks";
 	
-	private final String type[] = {null, "lc", "mc", "hc"};
-	private final int type_num[] = {0, 1, 2, 3};
+	public final static String type[] = {null, "lc", "mc", "hc"};
+	public final static int type_num[] = {0, 1, 2, 3};
+	
+	public static boolean ConfigAvailableLCB;
+	public static boolean ConfigAvailableMCB;
+	public static boolean ConfigAvailableHCB;
 	
 	public static boolean ConfigCraftingLCB;
 	public static boolean ConfigCraftingMCB;
 	public static boolean ConfigCraftingHCB;
+	
+	public static boolean ConfigEasyCraftingLCB;
+	public static boolean ConfigEasyCraftingMCB;
+	public static boolean ConfigEasyCraftingHCB;
+	
+	public static boolean ConfigSmeltingLCB;
+	public static boolean ConfigSmeltingMCB;
+	public static boolean ConfigSmeltingHCB;
 	
 	public static int ConfigUnCraftingLCB;
 	public static int ConfigUnCraftingMCB;
@@ -37,15 +50,35 @@ public class Core
 		Configuration config = new Configuration(Event.getSuggestedConfigurationFile());
 		config.load();
 		
-        ConfigCraftingLCB = config.get(Configuration.CATEGORY_GENERAL, "1|Low compressed", true, "Crafting Compressed blocks.").getBoolean(true);
-        ConfigCraftingMCB = config.get(Configuration.CATEGORY_GENERAL, "2|Medium compressed", true).getBoolean(true);
-        ConfigCraftingHCB = config.get(Configuration.CATEGORY_GENERAL, "3|High compressed", true).getBoolean(true);
+        ConfigAvailableLCB = config.get(Configuration.CATEGORY_GENERAL, "Available Low compressed blocks", true, "Whether blocks to be available in the game").getBoolean(true);
+        ConfigAvailableMCB = config.get(Configuration.CATEGORY_GENERAL, "Available Medium compressed blocks", true, "Whether blocks to be available in the game").getBoolean(true);
+        ConfigAvailableHCB = config.get(Configuration.CATEGORY_GENERAL, "Available High compressed blocks", true, "Whether blocks to be available in the game").getBoolean(true);
+		
+        ConfigCraftingLCB = config.get(Configuration.CATEGORY_GENERAL, "Crafting Low compressed blocks", true, "Whether blocks can be crafted.").getBoolean(true);
+        ConfigCraftingMCB = config.get(Configuration.CATEGORY_GENERAL, "Crafting Medium compressed blocks", true, "Whether blocks can be crafted.").getBoolean(true);
+        ConfigCraftingHCB = config.get(Configuration.CATEGORY_GENERAL, "Crafting High compressed blocks", true, "Whether blocks can be crafted.").getBoolean(true);
         
-        ConfigUnCraftingLCB = config.get(Configuration.CATEGORY_GENERAL, "4|Low compressed", 1, "Uncrafting Compressed blocks." + config.NEW_LINE + "How many buckets to use?" + config.NEW_LINE + "-1 : recipe unavailable" + config.NEW_LINE + "0/1/2/4/8 : available").getInt();
-        ConfigUnCraftingMCB = config.get(Configuration.CATEGORY_GENERAL, "5|Medium compresse", 4).getInt();
-        ConfigUnCraftingHCB = config.get(Configuration.CATEGORY_GENERAL, "6|High compresse", 8).getInt();
+        ConfigEasyCraftingLCB = config.get(Configuration.CATEGORY_GENERAL, "Easy Crafting Low compressed blocks", false, "Whether blocks can be easily crafted.").getBoolean(true);
+        ConfigEasyCraftingMCB = config.get(Configuration.CATEGORY_GENERAL, "Easy Crafting Medium compressed blocks", false, "Whether blocks can be easily crafted.").getBoolean(true);
+        ConfigEasyCraftingHCB = config.get(Configuration.CATEGORY_GENERAL, "Easy Crafting High compressed blocks", false, "Whether blocks can be easily crafted.").getBoolean(true);
+		
+        ConfigSmeltingLCB = config.get(Configuration.CATEGORY_GENERAL, "Smelting Low compressed blocks", true, "Whether blocks can be smelted.").getBoolean(true);
+        ConfigSmeltingMCB = config.get(Configuration.CATEGORY_GENERAL, "Smelting Medium compressed blocks", true, "Whether blocks can be smelted.").getBoolean(true);
+        ConfigSmeltingHCB = config.get(Configuration.CATEGORY_GENERAL, "Smelting High compressed blocks", true, "Whether blocks can be smelted.").getBoolean(true);
+        
+        ConfigUnCraftingLCB = config.get(Configuration.CATEGORY_GENERAL, "Uncrafting Low compressed blocks", 1, "How many water buckets to use for uncrafting?" + config.NEW_LINE + "-1 : recipe unavailable" + config.NEW_LINE + "0/1/2/4/8 : available").getInt();
+        ConfigUnCraftingMCB = config.get(Configuration.CATEGORY_GENERAL, "Uncrafting Medium compressed blocks", 4, "How many lava buckets to use for uncrafting?" + config.NEW_LINE + "-1 : recipe unavailable" + config.NEW_LINE + "0/1/2/4/8 : available").getInt();
+        ConfigUnCraftingHCB = config.get(Configuration.CATEGORY_GENERAL, "Uncrafting High compresse blocks", 8, "How many milk buckets to use for uncrafting?" + config.NEW_LINE + "-1 : recipe unavailable" + config.NEW_LINE + "0/1/2/4/8 : available").getInt();
 		
 		config.save();
+		
+		String items[][] =
+		{
+			{null, null, null},
+			{"low_adhesive", "slime_ball", "water_bucket"},
+			{"medium_adhesive", "magma_cream", "lava_bucket"},
+			{"high_adhesive", "high_magma_cream" ,"milk_bucket"}
+		};
 		
 		/** Name of items */
 		String low_adhesive = "low_adhesive";
@@ -59,26 +92,133 @@ public class Core
 		String slime_cream = "slime_cream";
 		String very_high_adhesive = "very_high_adhesive";
 		
-		/** New creative tab for items */
-		CreativeTabs tab_compressed_blocks = new CreativeTabs("tab_compressed_blocks")
+		/** New 4 creative tab [items/low blocks/medium blocks/high blocks] */
+		CreativeTabs tab[] = 
 		{
-			public Item getTabIconItem()
+			new CreativeTabs("tab[0]")
 			{
-				return GameRegistry.findItem(modid, "slime_cream");
+				public Item getTabIconItem()
+				{
+					return GameRegistry.findItem(modid, "slime_cream");
+				}
+			},	
+			
+			new CreativeTabs("tab_" + type[1] + "_blocks")
+			{
+				public Item getTabIconItem()
+				{
+					return Item.getItemFromBlock(GameRegistry.findBlock(modid, type[1] + "_blockIron"));
+				}
+			},
+						
+			new CreativeTabs("tab_" + type[2] + "_blocks")
+			{
+				public Item getTabIconItem()
+				{
+					return Item.getItemFromBlock(GameRegistry.findBlock(modid, type[2] + "_blockGold"));
+				}
+			},
+					
+			new CreativeTabs("tab_" + type[3] + "_blocks")
+			{
+				public Item getTabIconItem()
+				{
+					return Item.getItemFromBlock(GameRegistry.findBlock(modid, type[3] + "_blockDiamond"));
+				}
 			}
 		};
 		
 		/** Registration items */
-		GameRegistry.registerItem((new ItemCompressed(1)).setUnlocalizedName(low_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + low_adhesive), low_adhesive);
-		GameRegistry.registerItem((new ItemCompressed(2)).setUnlocalizedName(medium_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + medium_adhesive), medium_adhesive);
-		GameRegistry.registerItem((new ItemCompressed(2)).setUnlocalizedName(little_medium_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + little_medium_adhesive), little_medium_adhesive);
-		GameRegistry.registerItem((new ItemCompressed(2)).setUnlocalizedName(very_medium_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + very_medium_adhesive), very_medium_adhesive);
-		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(high_magma_cream).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + high_magma_cream), high_magma_cream);
-		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(high_ender_pearl).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + high_ender_pearl), high_ender_pearl);
-		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(high_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + high_adhesive), high_adhesive);
-		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(little_high_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + little_high_adhesive), little_high_adhesive);
-		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(slime_cream).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + slime_cream), slime_cream);
-		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(very_high_adhesive).setCreativeTab(tab_compressed_blocks).setTextureName(modid + ":" + very_high_adhesive), very_high_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(1)).setUnlocalizedName(low_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + low_adhesive), low_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(2)).setUnlocalizedName(medium_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + medium_adhesive), medium_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(2)).setUnlocalizedName(little_medium_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + little_medium_adhesive), little_medium_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(2)).setUnlocalizedName(very_medium_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + very_medium_adhesive), very_medium_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(high_magma_cream).setCreativeTab(tab[0]).setTextureName(modid + ":" + high_magma_cream), high_magma_cream);
+		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(high_ender_pearl).setCreativeTab(tab[0]).setTextureName(modid + ":" + high_ender_pearl), high_ender_pearl);
+		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(high_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + high_adhesive), high_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(little_high_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + little_high_adhesive), little_high_adhesive);
+		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(slime_cream).setCreativeTab(tab[0]).setTextureName(modid + ":" + slime_cream), slime_cream);
+		GameRegistry.registerItem((new ItemCompressed(3)).setUnlocalizedName(very_high_adhesive).setCreativeTab(tab[0]).setTextureName(modid + ":" + very_high_adhesive), very_high_adhesive);
+		
+		String blocks[][] =
+		{
+			{null, null, null},
+			{"4", "stonebrick", "stonebricksmooth"},
+			{null, "stone", null},
+			{null, "cobblestone", "stonebrick"},
+			{null, "mossy_cobblestone", "stoneMoss"},
+			{null, "gravel", null},				
+			{null, "dirt", "dirt.default"},				
+			{null, "sand", null},
+			{"4", "sandstone", "sandStone"},
+			{null, "end_stone", "whiteStone"},
+			{null, "sponge", null},
+			{"6", "planks", "wood"},
+			{null, "bookshelf", null},
+			{"4", "log", null},
+			{"2", "log2", "log"},
+			{null, "pumpkin", null},
+			{null, "lit_pumpkin", "litpumpkin"},
+			{null, "melon", null},
+			{null, "glass", null},
+			{"16", "stained_glass", "stainedGlass"},
+			{"16", "wool", null},
+			{null, "tnt", null},
+			{null, "redstone_lamp", "redstoneLight"},
+			{null, "glowstone", "lightgem"},
+			{null, "soul_sand", "hellsand"},
+			{null, "obsidian", null},
+			{null, "nether_brick", "netherBrick"},
+			{null, "netherrack", "hellrock"},
+			{null, "quartz_ore", "netherquartz"},
+			{"3", "quartz_block", "quartzBlock"},
+			{null, "snow", null},
+			{null, "ice", null},
+			{null, "packed_ice", "icePacked"},
+			{null, "clay", null},
+			{null, "hardened_clay", "clayHardened"},
+			{"16", "stained_hardened_clay", "clayHardenedStained"},
+			{null, "brick_block", "brick"},
+			{null, "coal_block", "blockCoal"},
+			{null, "iron_block", "blockIron"},
+			{null, "gold_block", "blockGold"},
+			{null, "diamond_block", "blockDiamond"},
+			{null, "lapis_block", "blockLapis"},
+			{null, "emerald_block", "blockEmerald"},
+			{null, "redstone_block", "blockRedstone"},
+			{null, "coal_ore", "oreCoal"},
+			{null, "iron_ore", "oreIron"},
+			{null, "gold_ore", "oreGold"},
+			{null, "diamond_ore", "oreDiamond"},
+			{null, "lapis_ore", "oreLapis"},
+			{null, "emerald_ore", "oreEmerald"},
+			{null, "redstone_ore", "oreRedstone"}
+		};
+		
+		String smelt[][][] =
+		{
+			{
+				{null, null, null, null},
+				{null, "stonebrick", "stone", "0.35"},
+				{null, "sand", "glass", "0.1"},
+				{null, "clay", "clayHardened", "0.35"}
+			},
+			
+			{
+				{null, null, null, null},
+				{"1", "log", "coal", "0.15"},
+				{"1", "log2", "coal", "0.15"},
+				{null, "hellrock", "netherbrick", "0.1"},
+				{null, "oreQuartz", "quartz", "0.2"},		
+				{null, "oreCoal", "coal", "0.1"},
+				{null, "oreIron", "iron_ingot", "0.7"},
+				{null, "oreGold", "gold_ingot", "1.0"},
+				{null, "oreDiamond", "diamond", "1.0"},
+				{"4", "oreLapis", "dye", "0.2"},
+				{null, "oreEmerald", "emerald", "1.0"},
+				{null, "oreRedstone", "redstone", "0.7"}
+			}
+		};
 		
 		/** Name of blocks */
 		String bedrock = "bedrock";
@@ -131,198 +271,248 @@ public class Core
 		String emerald_ore[] = {"emerald_ore", "oreEmerald"};
 		String redstone_ore[] = {"redstone_ore", "oreRedstone"};
 		
-		/** New creative tab for low compressed blocks */
-		CreativeTabs tab_lc_block = new CreativeTabs("tab_" + type[1] + "_blocks")
+		/** Registration Compressed blocks */
+		for (int i = 1; i <= 3; ++i)
 		{
-			public Item getTabIconItem()
+			if ((i == 1 && ConfigAvailableLCB == false) || (i == 2 && ConfigAvailableMCB == false) || (i == 3 && ConfigAvailableHCB == false))
 			{
-				return Item.getItemFromBlock(GameRegistry.findBlock(modid, type[1] + "_blockIron"));
+				i += 1;
 			}
-		};
+				
+			if (i > 0 && i <= 3)
+			{
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], bedrock, Material.rock)).setCreativeTab(tab[i]).setBlockUnbreakable().setResistance((float) (Math.pow(8, type_num[i]) * 6000000.0F)).setStepSound(Block.soundTypePiston).setBlockName(bedrock).setBlockTextureName(modid + ":" + type[i] + "/" + bedrock), ItemBlockCompressed.class, type[i] + "_" + bedrock);
+				GameRegistry.registerBlock((new BlockCompressedStoneBrick(type_num[i], stonebrick)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stonebrick + "smooth").setBlockTextureName(modid + ":" + type[i] + "/" + stonebrick), ItemBlockCompressedWithMetadata.class, type[i] + "_" + stonebrick + "smooth");
+				GameRegistry.registerBlock((new BlockCompressedStone(type_num[i], stone, Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stone).setBlockTextureName(modid + ":" + type[i] + "/" + stone), ItemBlockCompressed.class, type[i] + "_" + stone);
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], cobblestone[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone[1]).setBlockTextureName(modid + ":" + type[i] + "/" + cobblestone[0]), ItemBlockCompressed.class, type[i] + "_" + cobblestone[1]);
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], cobblestone_mossy[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone_mossy[1]).setBlockTextureName(modid + ":" + type[i] + "/" + cobblestone_mossy[2]), ItemBlockCompressed.class, type[i] + "_" + cobblestone_mossy[1]);
+				GameRegistry.registerBlock((new BlockCompressedGravel(type_num[i], gravel)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(gravel).setBlockTextureName(modid + ":" + type[i] + "/" + gravel), ItemBlockCompressed.class, type[i] + "_" + gravel);
+				GameRegistry.registerBlock((new BlockCompressedDirt(type_num[i], dirt, Material.ground)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.5F)).setStepSound(Block.soundTypeGravel).setBlockName(dirt + ".default").setBlockTextureName(modid + ":" + type[i] + "/" + dirt), ItemBlockCompressed.class, type[i] + "_" + dirt + ".default");
+				GameRegistry.registerBlock((new BlockCompressedSand(type_num[i], modid + ":" + type[i] + "/")).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(sand).setBlockTextureName(modid + ":" + type[i] + "/" + sand), ItemBlockCompressedWithMetadata.class, type[i] + "_" + sand);
+				GameRegistry.registerBlock((new BlockCompressedSandStone(type_num[i], sandstone[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(sandstone[1]).setBlockTextureName(modid + ":" + type[i] + "/" + sandstone[0]), ItemBlockCompressedWithMetadata.class, type[i] + "_" + sandstone[1]);
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], end_stone[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 15.0F)).setStepSound(Block.soundTypePiston).setBlockName(end_stone[1]).setBlockTextureName(modid + ":" + type[i] + "/" + end_stone[0]), ItemBlockCompressed.class, type[i] + "_" + end_stone[1]);
+				GameRegistry.registerBlock((new BlockCompressedWood(type_num[i], wood[1])).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypeWood).setBlockName(wood[0]).setBlockTextureName(modid + ":" + type[i] + "/" + wood[1]), ItemBlockCompressedWithMetadata.class, type[i] + "_" + wood[0]);
+				GameRegistry.registerBlock((new BlockCompressedBookshelf(type_num[i], bookshelf, Material.wood)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.5F)).setStepSound(Block.soundTypeWood).setBlockName(bookshelf).setBlockTextureName(modid + ":" + type[i] + "/" + bookshelf), ItemBlockCompressed.class, type[i] + "_" + bookshelf);
+				GameRegistry.registerBlock((new BlockCompressedOldLog(type_num[i], log, Material.wood)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[i] + "/" + log), ItemBlockCompressedWithMetadata.class, type[i] + "_" + log);
+				GameRegistry.registerBlock((new BlockCompressedNewLog(type_num[i], log + "2", Material.wood)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[i] + "/" + log), ItemBlockCompressedWithMetadata.class, type[i] + "_" + log + "2");
+				GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[i], pumpkin, Material.gourd, false)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(pumpkin).setBlockTextureName(modid + ":" + type[i] + "/" + pumpkin), ItemBlockCompressed.class, type[i] + "_" + pumpkin);
+				GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[i], "lit_" + pumpkin, Material.gourd, true)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.0F)).setLightLevel(1.0F).setStepSound(Block.soundTypeWood).setBlockName("lit" + pumpkin).setBlockTextureName(modid + ":" + type[i] + "/" + pumpkin), ItemBlockCompressed.class, type[i] + "_lit" + pumpkin);
+				GameRegistry.registerBlock((new BlockCompressedMelon(type_num[i], melon, Material.gourd)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(melon).setBlockTextureName(modid + ":" + type[i] + "/" + melon), ItemBlockCompressed.class, type[i] + "_" + melon);
+				GameRegistry.registerBlock((new BlockCompressedSponge(type_num[i], sponge, Material.sponge)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.6F)).setStepSound(Block.soundTypeGrass).setBlockName(sponge).setBlockTextureName(modid + ":" + type[i] + "/" + sponge), ItemBlockCompressed.class, type[i] + "_" + sponge);
+				GameRegistry.registerBlock((new BlockCompressedGlass(type_num[i], modid + ":" + type[i] + "/" + glass, Material.glass, false)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(glass).setBlockTextureName(modid + ":" + type[i] + "/" + glass), ItemBlockCompressed.class, type[i] + "_" + glass);
+				GameRegistry.registerBlock((new BlockCompressedStainedGlass(type_num[i], stained_glass[2], Material.glass)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(stained_glass[1]).setBlockTextureName(modid + ":" + type[i] + "/" + stained_glass[2]), ItemBlockCompressedWithMetadata.class, type[i] + "_" + stained_glass[1]);
+				GameRegistry.registerBlock((new BlockCompressedWool(type_num[i], wool[0], Material.cloth)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.6F)).setStepSound(Block.soundTypeCloth).setBlockName(wool[1]).setBlockTextureName(modid + ":" + type[i] + "/" + wool[0] + "_colored"), ItemBlockCompressedWithMetadata.class, type[i] + "_" + wool[1]);
+				GameRegistry.registerBlock((new BlockCompressedTNT(type_num[i], tnt, Material.tnt)).setCreativeTab(tab[i]).setHardness(0.0F).setStepSound(Block.soundTypeGrass).setBlockName(tnt).setBlockTextureName(modid + ":" + type[i] + "/" + tnt), ItemBlockCompressed.class, type[i] + "_" + tnt);
+				GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[i], redstone_lamp[0], Material.redstoneLight, false)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[i] + "/" + redstone_lamp[0] + "_off"), ItemBlockCompressed.class, type[i] + "_" + redstone_lamp[1]);
+				GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[i], "lit_" + redstone_lamp[0], Material.redstoneLight, true)).setHardness((float) (Math.pow(8, type_num[i]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[i] + "/" + redstone_lamp[0] + "_on"), ItemBlockCompressed.class, type[i] + "_lit_" + redstone_lamp[1]);
+				GameRegistry.registerBlock((new BlockCompressedGlowstone(type_num[i], glowstone[0], Material.glass)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.3F)).setStepSound(Block.soundTypeGlass).setLightLevel(1.0F).setBlockName(glowstone[1]).setBlockTextureName(modid + ":" + type[i] + "/" + glowstone[0]), ItemBlockCompressed.class, type[i] + "_" + glowstone[1]);
+				GameRegistry.registerBlock((new BlockCompressedSoulSand(type_num[i], soul_sand[0], Material.sand)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(soul_sand[1]).setBlockTextureName(modid + ":" + type[i] + "/" + soul_sand[0]), ItemBlockCompressed.class, type[i] + "_" + soul_sand[1]);
+				GameRegistry.registerBlock((new BlockCompressedObsidian(type_num[i], obsidian, Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 2000.0F)).setStepSound(Block.soundTypePiston).setBlockName(obsidian).setBlockTextureName(modid + ":" + type[i] + "/" + obsidian), ItemBlockCompressed.class, type[i] + "_" + obsidian);
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], nether_brick[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(nether_brick[1]).setBlockTextureName(modid + ":" + type[i] + "/" + nether_brick[0]), ItemBlockCompressed.class, type[i] + "_" + nether_brick[1]);
+				GameRegistry.registerBlock((new BlockCompressedNetherrack(type_num[i], netherrack[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.4F)).setStepSound(Block.soundTypePiston).setBlockName(netherrack[1]).setBlockTextureName(modid + ":" + type[i] + "/" + netherrack[0]), ItemBlockCompressed.class, type[i] + "_" + netherrack[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], quartz_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + quartz_ore[0]), ItemBlockCompressed.class, type[i] + "_" + quartz_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedQuartz(type_num[i], quartz_block[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + quartz_block[0]), ItemBlockCompressedWithMetadata.class, type[i] + "_" + quartz_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedSnowBlock(type_num[i], snow, Material.craftedSnow)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.2F)).setStepSound(Block.soundTypeSnow).setBlockName(snow).setBlockTextureName(modid + ":" + type[i] + "/" + snow), ItemBlockCompressed.class, type[i] + "_" + snow);
+				GameRegistry.registerBlock((new BlockCompressedIce(type_num[i], modid + ":" + type[i] + "/" + ice, Material.ice)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.5F)).setLightOpacity(6 - type_num[i] * 2).setStepSound(Block.soundTypeGlass).setBlockName(ice).setBlockTextureName(modid + ":" + type[i] + "/" + ice), ItemBlockCompressed.class, type[i] + "_" + ice);
+				GameRegistry.registerBlock((new BlockCompressedPackedIce(type_num[i],ice_packed[0], Material.packedIce)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.5F)).setStepSound(Block.soundTypeGlass).setBlockName(ice_packed[1]).setBlockTextureName(modid + ":" + type[i] + "/" + ice_packed[2]), ItemBlockCompressed.class, type[i] + "_" + ice_packed[1]);
+				GameRegistry.registerBlock((new BlockCompressedClay(type_num[i], clay, Material.clay)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(clay).setBlockTextureName(modid + ":" + type[i] + "/" + clay), ItemBlockCompressed.class, type[i] + "_" + clay);
+				GameRegistry.registerBlock((new BlockCompressedClayHardened(type_num[i], hardened_clay[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[i]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay[1]).setBlockTextureName(modid + ":" + type[i] + "/" + hardened_clay[0]), ItemBlockCompressed.class, type[i] + "_" + hardened_clay[1]);
+				GameRegistry.registerBlock((new BlockCompressedClayHardenedStained(type_num[i], hardened_clay_stained[2], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[i]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay_stained[1]).setBlockTextureName(modid + ":" + type[i] + "/" + hardened_clay_stained[0]), ItemBlockCompressedWithMetadata.class, type[i] + "_" + hardened_clay_stained[1]);
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], brick + "_block", Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(brick).setBlockTextureName(modid + ":" + type[i] + "/" + brick), ItemBlockCompressed.class, type[i] + "_" + brick);
+				GameRegistry.registerBlock((new BlockCompressed(type_num[i], coal_block[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + coal_block[0]), ItemBlockCompressed.class, type[i] + "_" + coal_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[i], iron_block[0], MapColor.ironColor)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(iron_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + iron_block[0]), ItemBlockCompressed.class, type[i] + "_" + iron_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[i], gold_block[0], MapColor.goldColor)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(gold_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + gold_block[0]), ItemBlockCompressed.class, type[i] + "_" + gold_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[i], diamond_block[0], MapColor.diamondColor)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(diamond_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + diamond_block[0]), ItemBlockCompressed.class, type[i] + "_" + diamond_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[i], lapis_block[0], MapColor.lapisColor)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + lapis_block[0]), ItemBlockCompressed.class, type[i] + "_" + lapis_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[i], emerald_block[0], MapColor.emeraldColor)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(emerald_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + emerald_block[0]), ItemBlockCompressed.class, type[i] + "_" + emerald_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedCompressedPowered(type_num[i],redstone_block[0], MapColor.tntColor)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(redstone_block[1]).setBlockTextureName(modid + ":" + type[i] + "/" + redstone_block[0]), ItemBlockCompressed.class, type[i] + "_" + redstone_block[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], coal_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + coal_ore[0]), ItemBlockCompressed.class, type[i] + "_" + coal_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], iron_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(iron_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + iron_ore[0]), ItemBlockCompressed.class, type[i] + "_" + iron_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], gold_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(gold_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + gold_ore[0]), ItemBlockCompressed.class, type[i] + "_" + gold_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], diamond_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(diamond_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + diamond_ore[0]), ItemBlockCompressed.class, type[i] + "_" + diamond_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], lapis_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + lapis_ore[0]), ItemBlockCompressed.class, type[i] + "_" + lapis_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedOre(type_num[i], emerald_ore[0], Material.rock)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(emerald_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + emerald_ore[0]), ItemBlockCompressed.class, type[i] + "_" + emerald_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[i], redstone_ore[0], Material.rock, false)).setCreativeTab(tab[i]).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[i] + "_" + redstone_ore[1]);
+				GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[i], "lit_" + redstone_ore[0], Material.rock, true)).setLightLevel(type_num[i] * 0.125F + 0.625F).setHardness((float) (Math.pow(8, type_num[i]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[i]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[i] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[i] + "_lit_" + redstone_ore[1]);
+			}
+		}
 		
-		/** Registration low compressed blocks */
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], bedrock, Material.rock)).setCreativeTab(tab_lc_block).setBlockUnbreakable().setResistance((float) (Math.pow(8, type_num[1]) * 6000000.0F)).setStepSound(Block.soundTypePiston).setBlockName(bedrock).setBlockTextureName(modid + ":" + type[1] + "/" + bedrock), ItemBlockCompressed.class, type[1] + "_" + bedrock);
-		GameRegistry.registerBlock((new BlockCompressedStoneBrick(type_num[1], stonebrick)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stonebrick + "smooth").setBlockTextureName(modid + ":" + type[1] + "/" + stonebrick), ItemBlockCompressedWithMetadata.class, type[1] + "_" + stonebrick + "smooth");
-		GameRegistry.registerBlock((new BlockCompressedStone(type_num[1], stone, Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stone).setBlockTextureName(modid + ":" + type[1] + "/" + stone), ItemBlockCompressed.class, type[1] + "_" + stone);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], cobblestone[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 80.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone[1]).setBlockTextureName(modid + ":" + type[1] + "/" + cobblestone[0]), ItemBlockCompressed.class, type[1] + "_" + cobblestone[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], cobblestone_mossy[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone_mossy[1]).setBlockTextureName(modid + ":" + type[1] + "/" + cobblestone_mossy[2]), ItemBlockCompressed.class, type[1] + "_" + cobblestone_mossy[1]);
-		GameRegistry.registerBlock((new BlockCompressedGravel(type_num[1], gravel)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(gravel).setBlockTextureName(modid + ":" + type[1] + "/" + gravel), ItemBlockCompressed.class, type[1] + "_" + gravel);
-		GameRegistry.registerBlock((new BlockCompressedDirt(type_num[1], dirt, Material.ground)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.5F)).setStepSound(Block.soundTypeGravel).setBlockName(dirt + ".default").setBlockTextureName(modid + ":" + type[1] + "/" + dirt), ItemBlockCompressed.class, type[1] + "_" + dirt + ".default");
-		GameRegistry.registerBlock((new BlockCompressedSand(type_num[1], modid + ":" + type[1] + "/")).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(sand).setBlockTextureName(modid + ":" + type[1] + "/" + sand), ItemBlockCompressedWithMetadata.class, type[1] + "_" + sand);
-		GameRegistry.registerBlock((new BlockCompressedSandStone(type_num[1], sandstone[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(sandstone[1]).setBlockTextureName(modid + ":" + type[1] + "/" + sandstone[0]), ItemBlockCompressedWithMetadata.class, type[1] + "_" + sandstone[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], end_stone[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 15.0F)).setStepSound(Block.soundTypePiston).setBlockName(end_stone[1]).setBlockTextureName(modid + ":" + type[1] + "/" + end_stone[0]), ItemBlockCompressed.class, type[1] + "_" + end_stone[1]);
-		GameRegistry.registerBlock((new BlockCompressedWood(type_num[1], wood[1])).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypeWood).setBlockName(wood[0]).setBlockTextureName(modid + ":" + type[1] + "/" + wood[1]), ItemBlockCompressedWithMetadata.class, type[1] + "_" + wood[0]);
-		GameRegistry.registerBlock((new BlockCompressedBookshelf(type_num[1], bookshelf, Material.wood)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.5F)).setStepSound(Block.soundTypeWood).setBlockName(bookshelf).setBlockTextureName(modid + ":" + type[1] + "/" + bookshelf), ItemBlockCompressed.class, type[1] + "_" + bookshelf);
-		GameRegistry.registerBlock((new BlockCompressedOldLog(type_num[1], log, Material.wood)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[1] + "/" + log), ItemBlockCompressedWithMetadata.class, type[1] + "_" + log);
-		GameRegistry.registerBlock((new BlockCompressedNewLog(type_num[1], log + "2", Material.wood)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[1] + "/" + log), ItemBlockCompressedWithMetadata.class, type[1] + "_" + log + "2");
-		GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[1], pumpkin, Material.gourd, false)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(pumpkin).setBlockTextureName(modid + ":" + type[1] + "/" + pumpkin), ItemBlockCompressed.class, type[1] + "_" + pumpkin);
-		GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[1], "lit_" + pumpkin, Material.gourd, true)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.0F)).setLightLevel(1.0F).setStepSound(Block.soundTypeWood).setBlockName("lit" + pumpkin).setBlockTextureName(modid + ":" + type[1] + "/" + pumpkin), ItemBlockCompressed.class, type[1] + "_lit" + pumpkin);
-		GameRegistry.registerBlock((new BlockCompressedMelon(type_num[1], melon, Material.gourd)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(melon).setBlockTextureName(modid + ":" + type[1] + "/" + melon), ItemBlockCompressed.class, type[1] + "_" + melon);
-		GameRegistry.registerBlock((new BlockCompressedSponge(type_num[1], sponge, Material.sponge)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.6F)).setStepSound(Block.soundTypeGrass).setBlockName(sponge).setBlockTextureName(modid + ":" + type[1] + "/" + sponge), ItemBlockCompressed.class, type[1] + "_" + sponge);
-		GameRegistry.registerBlock((new BlockCompressedGlass(type_num[1], modid + ":" + type[1] + "/" + glass, Material.glass, false)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(glass).setBlockTextureName(modid + ":" + type[1] + "/" + glass), ItemBlockCompressed.class, type[1] + "_" + glass);
-		GameRegistry.registerBlock((new BlockCompressedStainedGlass(type_num[1], stained_glass[2], Material.glass)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(stained_glass[1]).setBlockTextureName(modid + ":" + type[1] + "/" + stained_glass[2]), ItemBlockCompressedWithMetadata.class, type[1] + "_" + stained_glass[1]);
-		GameRegistry.registerBlock((new BlockCompressedWool(type_num[1], wool[0], Material.cloth)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.6F)).setStepSound(Block.soundTypeCloth).setBlockName(wool[1]).setBlockTextureName(modid + ":" + type[1] + "/" + wool[0] + "_colored"), ItemBlockCompressedWithMetadata.class, type[1] + "_" + wool[1]);
-		GameRegistry.registerBlock((new BlockCompressedTNT(type_num[1], tnt, Material.tnt)).setCreativeTab(tab_lc_block).setHardness(0.0F).setStepSound(Block.soundTypeGrass).setBlockName(tnt).setBlockTextureName(modid + ":" + type[1] + "/" + tnt), ItemBlockCompressed.class, type[1] + "_" + tnt);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[1], redstone_lamp[0], Material.redstoneLight, false)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[1] + "/" + redstone_lamp[0] + "_off"), ItemBlockCompressed.class, type[1] + "_" + redstone_lamp[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[1], "lit_" + redstone_lamp[0], Material.redstoneLight, true)).setHardness((float) (Math.pow(8, type_num[1]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[1] + "/" + redstone_lamp[0] + "_on"), ItemBlockCompressed.class, type[1] + "_lit_" + redstone_lamp[1]);
-		GameRegistry.registerBlock((new BlockCompressedGlowstone(type_num[1], glowstone[0], Material.glass)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.3F)).setStepSound(Block.soundTypeGlass).setLightLevel(1.0F).setBlockName(glowstone[1]).setBlockTextureName(modid + ":" + type[1] + "/" + glowstone[0]), ItemBlockCompressed.class, type[1] + "_" + glowstone[1]);
-		GameRegistry.registerBlock((new BlockCompressedSoulSand(type_num[1], soul_sand[0], Material.sand)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(soul_sand[1]).setBlockTextureName(modid + ":" + type[1] + "/" + soul_sand[0]), ItemBlockCompressed.class, type[1] + "_" + soul_sand[1]);
-		GameRegistry.registerBlock((new BlockCompressedObsidian(type_num[1], obsidian, Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 2000.0F)).setStepSound(Block.soundTypePiston).setBlockName(obsidian).setBlockTextureName(modid + ":" + type[1] + "/" + obsidian), ItemBlockCompressed.class, type[1] + "_" + obsidian);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], nether_brick[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(nether_brick[1]).setBlockTextureName(modid + ":" + type[1] + "/" + nether_brick[0]), ItemBlockCompressed.class, type[1] + "_" + nether_brick[1]);
-		GameRegistry.registerBlock((new BlockCompressedNetherrack(type_num[1], netherrack[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.4F)).setStepSound(Block.soundTypePiston).setBlockName(netherrack[1]).setBlockTextureName(modid + ":" + type[1] + "/" + netherrack[0]), ItemBlockCompressed.class, type[1] + "_" + netherrack[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], quartz_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + quartz_ore[0]), ItemBlockCompressed.class, type[1] + "_" + quartz_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedQuartz(type_num[1], quartz_block[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + quartz_block[0]), ItemBlockCompressedWithMetadata.class, type[1] + "_" + quartz_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedSnowBlock(type_num[1], snow, Material.craftedSnow)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.2F)).setStepSound(Block.soundTypeSnow).setBlockName(snow).setBlockTextureName(modid + ":" + type[1] + "/" + snow), ItemBlockCompressed.class, type[1] + "_" + snow);
-		GameRegistry.registerBlock((new BlockCompressedIce(type_num[1], modid + ":" + type[1] + "/" + ice, Material.ice)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.5F)).setLightOpacity(6 - type_num[1] * 2).setStepSound(Block.soundTypeGlass).setBlockName(ice).setBlockTextureName(modid + ":" + type[1] + "/" + ice), ItemBlockCompressed.class, type[1] + "_" + ice);
-		GameRegistry.registerBlock((new BlockCompressedPackedIce(type_num[1],ice_packed[0], Material.packedIce)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.5F)).setStepSound(Block.soundTypeGlass).setBlockName(ice_packed[1]).setBlockTextureName(modid + ":" + type[1] + "/" + ice_packed[2]), ItemBlockCompressed.class, type[1] + "_" + ice_packed[1]);
-		GameRegistry.registerBlock((new BlockCompressedClay(type_num[1], clay, Material.clay)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(clay).setBlockTextureName(modid + ":" + type[1] + "/" + clay), ItemBlockCompressed.class, type[1] + "_" + clay);
-		GameRegistry.registerBlock((new BlockCompressedClayHardened(type_num[1], hardened_clay[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[1]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay[1]).setBlockTextureName(modid + ":" + type[1] + "/" + hardened_clay[0]), ItemBlockCompressed.class, type[1] + "_" + hardened_clay[1]);
-		GameRegistry.registerBlock((new BlockCompressedClayHardenedStained(type_num[1], hardened_clay_stained[2], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[1]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay_stained[1]).setBlockTextureName(modid + ":" + type[1] + "/" + hardened_clay_stained[0]), ItemBlockCompressedWithMetadata.class, type[1] + "_" + hardened_clay_stained[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], brick + "_block", Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(brick).setBlockTextureName(modid + ":" + type[1] + "/" + brick), ItemBlockCompressed.class, type[1] + "_" + brick);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[1], coal_block[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + coal_block[0]), ItemBlockCompressed.class, type[1] + "_" + coal_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[1], iron_block[0], MapColor.ironColor)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(iron_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + iron_block[0]), ItemBlockCompressed.class, type[1] + "_" + iron_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[1], gold_block[0], MapColor.goldColor)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(gold_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + gold_block[0]), ItemBlockCompressed.class, type[1] + "_" + gold_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[1], diamond_block[0], MapColor.diamondColor)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(diamond_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + diamond_block[0]), ItemBlockCompressed.class, type[1] + "_" + diamond_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[1], lapis_block[0], MapColor.lapisColor)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + lapis_block[0]), ItemBlockCompressed.class, type[1] + "_" + lapis_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[1], emerald_block[0], MapColor.emeraldColor)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(emerald_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + emerald_block[0]), ItemBlockCompressed.class, type[1] + "_" + emerald_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressedPowered(type_num[1],redstone_block[0], MapColor.tntColor)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(redstone_block[1]).setBlockTextureName(modid + ":" + type[1] + "/" + redstone_block[0]), ItemBlockCompressed.class, type[1] + "_" + redstone_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], coal_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + coal_ore[0]), ItemBlockCompressed.class, type[1] + "_" + coal_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], iron_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(iron_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + iron_ore[0]), ItemBlockCompressed.class, type[1] + "_" + iron_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], gold_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(gold_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + gold_ore[0]), ItemBlockCompressed.class, type[1] + "_" + gold_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], diamond_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(diamond_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + diamond_ore[0]), ItemBlockCompressed.class, type[1] + "_" + diamond_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], lapis_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + lapis_ore[0]), ItemBlockCompressed.class, type[1] + "_" + lapis_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[1], emerald_ore[0], Material.rock)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(emerald_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + emerald_ore[0]), ItemBlockCompressed.class, type[1] + "_" + emerald_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[1], redstone_ore[0], Material.rock, false)).setCreativeTab(tab_lc_block).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[1] + "_" + redstone_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[1], "lit_" + redstone_ore[0], Material.rock, true)).setLightLevel(type_num[1] * 0.125F + 0.625F).setHardness((float) (Math.pow(8, type_num[1]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[1]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[1] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[1] + "_lit_" + redstone_ore[1]);
-		
-
-		
-		/** New creative tab for medium compressed blocks */
-		CreativeTabs tab_mc_block = new CreativeTabs("tab_" + type[2] + "_blocks")
+		/** Crafting items or not */
+		if (ConfigEasyCraftingLCB == false)
 		{
-			public Item getTabIconItem()
-			{
-				return Item.getItemFromBlock(GameRegistry.findBlock(modid, type[2] + "_blockGold"));
-			}
-		};
-		
-		/** Registration medium compressed blocks */
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], bedrock, Material.rock)).setCreativeTab(tab_mc_block).setBlockUnbreakable().setResistance((float) (Math.pow(8, type_num[2]) * 6000000.0F)).setStepSound(Block.soundTypePiston).setBlockName(bedrock).setBlockTextureName(modid + ":" + type[2] + "/" + bedrock), ItemBlockCompressed.class, type[2] + "_" + bedrock);
-		GameRegistry.registerBlock((new BlockCompressedStoneBrick(type_num[2], stonebrick)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stonebrick + "smooth").setBlockTextureName(modid + ":" + type[2] + "/" + stonebrick), ItemBlockCompressedWithMetadata.class, type[2] + "_" + stonebrick + "smooth");
-		GameRegistry.registerBlock((new BlockCompressedStone(type_num[2], stone, Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stone).setBlockTextureName(modid + ":" + type[2] + "/" + stone), ItemBlockCompressed.class, type[2] + "_" + stone);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], cobblestone[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 80.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone[1]).setBlockTextureName(modid + ":" + type[2] + "/" + cobblestone[0]), ItemBlockCompressed.class, type[2] + "_" + cobblestone[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], cobblestone_mossy[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone_mossy[1]).setBlockTextureName(modid + ":" + type[2] + "/" + cobblestone_mossy[2]), ItemBlockCompressed.class, type[2] + "_" + cobblestone_mossy[1]);
-		GameRegistry.registerBlock((new BlockCompressedGravel(type_num[2], gravel)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(gravel).setBlockTextureName(modid + ":" + type[2] + "/" + gravel), ItemBlockCompressed.class, type[2] + "_" + gravel);
-		GameRegistry.registerBlock((new BlockCompressedDirt(type_num[2], dirt, Material.ground)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.5F)).setStepSound(Block.soundTypeGravel).setBlockName(dirt + ".default").setBlockTextureName(modid + ":" + type[2] + "/" + dirt), ItemBlockCompressed.class, type[2] + "_" + dirt + ".default");
-		GameRegistry.registerBlock((new BlockCompressedSand(type_num[2], modid + ":" + type[2] + "/")).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(sand).setBlockTextureName(modid + ":" + type[2] + "/" + sand), ItemBlockCompressedWithMetadata.class, type[2] + "_" + sand);
-		GameRegistry.registerBlock((new BlockCompressedSandStone(type_num[2], sandstone[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(sandstone[1]).setBlockTextureName(modid + ":" + type[2] + "/" + sandstone[0]), ItemBlockCompressedWithMetadata.class, type[2] + "_" + sandstone[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], end_stone[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 15.0F)).setStepSound(Block.soundTypePiston).setBlockName(end_stone[1]).setBlockTextureName(modid + ":" + type[2] + "/" + end_stone[0]), ItemBlockCompressed.class, type[2] + "_" + end_stone[1]);
-		GameRegistry.registerBlock((new BlockCompressedWood(type_num[2], wood[1])).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypeWood).setBlockName(wood[0]).setBlockTextureName(modid + ":" + type[2] + "/" + wood[1]), ItemBlockCompressedWithMetadata.class, type[2] + "_" + wood[0]);
-		GameRegistry.registerBlock((new BlockCompressedBookshelf(type_num[2], bookshelf, Material.wood)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.5F)).setStepSound(Block.soundTypeWood).setBlockName(bookshelf).setBlockTextureName(modid + ":" + type[2] + "/" + bookshelf), ItemBlockCompressed.class, type[2] + "_" + bookshelf);
-		GameRegistry.registerBlock((new BlockCompressedOldLog(type_num[2], log, Material.wood)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[2] + "/" + log), ItemBlockCompressedWithMetadata.class, type[2] + "_" + log);
-		GameRegistry.registerBlock((new BlockCompressedNewLog(type_num[2], log + "2", Material.wood)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[2] + "/" + log), ItemBlockCompressedWithMetadata.class, type[2] + "_" + log + "2");
-		GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[2], pumpkin, Material.gourd, false)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(pumpkin).setBlockTextureName(modid + ":" + type[2] + "/" + pumpkin), ItemBlockCompressed.class, type[2] + "_" + pumpkin);
-		GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[2], "lit_" + pumpkin, Material.gourd, true)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.0F)).setLightLevel(1.0F).setStepSound(Block.soundTypeWood).setBlockName("lit" + pumpkin).setBlockTextureName(modid + ":" + type[2] + "/" + pumpkin), ItemBlockCompressed.class, type[2] + "_lit" + pumpkin);
-		GameRegistry.registerBlock((new BlockCompressedMelon(type_num[2], melon, Material.gourd)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(melon).setBlockTextureName(modid + ":" + type[2] + "/" + melon), ItemBlockCompressed.class, type[2] + "_" + melon);
-		GameRegistry.registerBlock((new BlockCompressedSponge(type_num[2], sponge, Material.sponge)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.6F)).setStepSound(Block.soundTypeGrass).setBlockName(sponge).setBlockTextureName(modid + ":" + type[2] + "/" + sponge), ItemBlockCompressed.class, type[2] + "_" + sponge);
-		GameRegistry.registerBlock((new BlockCompressedGlass(type_num[2], modid + ":" + type[2] + "/" + glass, Material.glass, false)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(glass).setBlockTextureName(modid + ":" + type[2] + "/" + glass), ItemBlockCompressed.class, type[2] + "_" + glass);
-		GameRegistry.registerBlock((new BlockCompressedStainedGlass(type_num[2], stained_glass[2], Material.glass)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(stained_glass[1]).setBlockTextureName(modid + ":" + type[2] + "/" + stained_glass[2]), ItemBlockCompressedWithMetadata.class, type[2] + "_" + stained_glass[1]);
-		GameRegistry.registerBlock((new BlockCompressedWool(type_num[2],wool[0], Material.cloth)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.6F)).setStepSound(Block.soundTypeCloth).setBlockName(wool[1]).setBlockTextureName(modid + ":" + type[2] + "/" + wool[0] + "_colored"), ItemBlockCompressedWithMetadata.class, type[2] + "_" + wool[1]);
-		GameRegistry.registerBlock((new BlockCompressedTNT(type_num[2], tnt, Material.tnt)).setCreativeTab(tab_mc_block).setHardness(0.0F).setStepSound(Block.soundTypeGrass).setBlockName(tnt).setBlockTextureName(modid + ":" + type[2] + "/" + tnt), ItemBlockCompressed.class, type[2] + "_" + tnt);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[2], redstone_lamp[0], Material.redstoneLight, false)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[2] + "/" + redstone_lamp[0] + "_off"), ItemBlockCompressed.class, type[2] + "_" + redstone_lamp[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[2], "lit_" + redstone_lamp[0], Material.redstoneLight, true)).setHardness((float) (Math.pow(8, type_num[2]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[2] + "/" + redstone_lamp[0] + "_on"), ItemBlockCompressed.class, type[2] + "_lit_" + redstone_lamp[1]);
-		GameRegistry.registerBlock((new BlockCompressedGlowstone(type_num[2], glowstone[0], Material.glass)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.3F)).setStepSound(Block.soundTypeGlass).setLightLevel(1.0F).setBlockName(glowstone[1]).setBlockTextureName(modid + ":" + type[2] + "/" + glowstone[0]), ItemBlockCompressed.class, type[2] + "_" + glowstone[1]);
-		GameRegistry.registerBlock((new BlockCompressedSoulSand(type_num[2], soul_sand[0], Material.sand)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(soul_sand[1]).setBlockTextureName(modid + ":" + type[2] + "/" + soul_sand[0]), ItemBlockCompressed.class, type[2] + "_" + soul_sand[1]);
-		GameRegistry.registerBlock((new BlockCompressedObsidian(type_num[2], obsidian, Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 2000.0F)).setStepSound(Block.soundTypePiston).setBlockName(obsidian).setBlockTextureName(modid + ":" + type[2] + "/" + obsidian), ItemBlockCompressed.class, type[2] + "_" + obsidian);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], nether_brick[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(nether_brick[1]).setBlockTextureName(modid + ":" + type[2] + "/" + nether_brick[0]), ItemBlockCompressed.class, type[2] + "_" + nether_brick[1]);
-		GameRegistry.registerBlock((new BlockCompressedNetherrack(type_num[2], netherrack[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.4F)).setStepSound(Block.soundTypePiston).setBlockName(netherrack[1]).setBlockTextureName(modid + ":" + type[2] + "/" + netherrack[0]), ItemBlockCompressed.class, type[2] + "_" + netherrack[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], quartz_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + quartz_ore[0]), ItemBlockCompressed.class, type[2] + "_" + quartz_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedQuartz(type_num[2], quartz_block[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + quartz_block[0]), ItemBlockCompressedWithMetadata.class, type[2] + "_" + quartz_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedSnowBlock(type_num[2], snow, Material.craftedSnow)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.2F)).setStepSound(Block.soundTypeSnow).setBlockName(snow).setBlockTextureName(modid + ":" + type[2] + "/" + snow), ItemBlockCompressed.class, type[2] + "_" + snow);
-		GameRegistry.registerBlock((new BlockCompressedIce(type_num[2], modid + ":" + type[2] + "/" + ice, Material.ice)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.5F)).setLightOpacity(6 - type_num[1] * 2).setStepSound(Block.soundTypeGlass).setBlockName(ice).setBlockTextureName(modid + ":" + type[2] + "/" + ice), ItemBlockCompressed.class, type[2] + "_" + ice);
-		GameRegistry.registerBlock((new BlockCompressedPackedIce(type_num[2], ice_packed[0], Material.packedIce)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.5F)).setStepSound(Block.soundTypeGlass).setBlockName(ice_packed[1]).setBlockTextureName(modid + ":" + type[2] + "/" + ice_packed[2]), ItemBlockCompressed.class, type[2] + "_" + ice_packed[1]);
-		GameRegistry.registerBlock((new BlockCompressedClay(type_num[2], clay, Material.clay)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(clay).setBlockTextureName(modid + ":" + type[2] + "/" + clay), ItemBlockCompressed.class, type[2] + "_" + clay);
-		GameRegistry.registerBlock((new BlockCompressedClayHardened(type_num[2], hardened_clay[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[2]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay[1]).setBlockTextureName(modid + ":" + type[2] + "/" + hardened_clay[0]), ItemBlockCompressed.class, type[2] + "_" + hardened_clay[1]);
-		GameRegistry.registerBlock((new BlockCompressedClayHardenedStained(type_num[2], hardened_clay_stained[2], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[2]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay_stained[1]).setBlockTextureName(modid + ":" + type[2] + "/" + hardened_clay_stained[0]), ItemBlockCompressedWithMetadata.class, type[2] + "_" + hardened_clay_stained[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], brick + "_block", Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(brick).setBlockTextureName(modid + ":" + type[2] + "/" + brick), ItemBlockCompressed.class, type[2] + "_" + brick);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[2], coal_block[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + coal_block[0]), ItemBlockCompressed.class, type[2] + "_" + coal_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[2], iron_block[0], MapColor.ironColor)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(iron_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + iron_block[0]), ItemBlockCompressed.class, type[2] + "_" + iron_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[2], gold_block[0], MapColor.goldColor)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(gold_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + gold_block[0]), ItemBlockCompressed.class, type[2] + "_" + gold_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[2], diamond_block[0], MapColor.diamondColor)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(diamond_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + diamond_block[0]), ItemBlockCompressed.class, type[2] + "_" + diamond_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[2], lapis_block[0], MapColor.lapisColor)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + lapis_block[0]), ItemBlockCompressed.class, type[2] + "_" + lapis_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[2], emerald_block[0], MapColor.emeraldColor)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(emerald_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + emerald_block[0]), ItemBlockCompressed.class, type[2] + "_" + emerald_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressedPowered(type_num[2], redstone_block[0], MapColor.tntColor)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(redstone_block[1]).setBlockTextureName(modid + ":" + type[2] + "/" + redstone_block[0]), ItemBlockCompressed.class, type[2] + "_" + redstone_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], coal_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + coal_ore[0]), ItemBlockCompressed.class, type[2] + "_" + coal_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], iron_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(iron_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + iron_ore[0]), ItemBlockCompressed.class, type[2] + "_" + iron_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], gold_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(gold_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + gold_ore[0]), ItemBlockCompressed.class, type[2] + "_" + gold_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], diamond_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(diamond_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + diamond_ore[0]), ItemBlockCompressed.class, type[2] + "_" + diamond_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], lapis_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + lapis_ore[0]), ItemBlockCompressed.class, type[2] + "_" + lapis_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[2], emerald_ore[0], Material.rock)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(emerald_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + emerald_ore[0]), ItemBlockCompressed.class, type[2] + "_" + emerald_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[2], redstone_ore[0], Material.rock, false)).setCreativeTab(tab_mc_block).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[2] + "_" + redstone_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[2], "lit_" + redstone_ore[0], Material.rock, true)).setLightLevel(type_num[2] * 0.125F + 0.625F).setHardness((float) (Math.pow(8, type_num[2]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[2]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[2] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[2] + "_lit_" + redstone_ore[1]);
-			
-		/** New creative tab for high compressed blocks */
-		CreativeTabs tab_hc_block = new CreativeTabs("tab_" + type[3] + "_blocks")
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, low_adhesive)), "sss", "ses", "sss", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'e', (Item)Item.itemRegistry.getObject("ender_pearl"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, medium_adhesive)), "mmm", "mem", "mmm", 'm', (Item)Item.itemRegistry.getObject("magma_cream"), 'e', (Item)Item.itemRegistry.getObject("ender_eye"));
+			/** Coming soon
+			GameRegistry.addShapelessRecipe(new ItemStack(GameRegistry.findItem(Core.modid, little_medium_adhesive)), GameRegistry.findItem(Core.modid, medium_adhesive), (Item)Item.itemRegistry.getObject("blaze_powder"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, very_medium_adhesive)), "sss", "sms", "sss", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'm', GameRegistry.findItem(Core.modid, little_medium_adhesive));
+			*/
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_magma_cream)), "bbb", "bsb", "bbb", 'b', (Item)Item.itemRegistry.getObject("blaze_powder"), 's', (Item)Item.itemRegistry.getObject("slime_ball"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_magma_cream)), " b ", "bsb", " b ", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 's', (Item)Item.itemRegistry.getObject("slime_ball"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_magma_cream)), "b b", " s ", "b b", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 's', (Item)Item.itemRegistry.getObject("slime_ball"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_ender_pearl)), "bbb", "beb", "bbb", 'b', (Item)Item.itemRegistry.getObject("blaze_powder"), 'e', (Item)Item.itemRegistry.getObject("ender_pearl"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_ender_pearl)), " b ", "beb", " b ", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 'e', (Item)Item.itemRegistry.getObject("ender_pearl"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_ender_pearl)), "b b", " e ", "b b", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 'e', (Item)Item.itemRegistry.getObject("ender_pearl"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_adhesive)), "mmm", "mem", "mmm", 'm', GameRegistry.findItem(modid, high_magma_cream), 'e', GameRegistry.findItem(modid, high_ender_pearl));
+			/** Coming soon
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, slime_cream)), "   ", "sbs", "   ", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'b', (Item)Item.itemRegistry.getObject("blaze_powder"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, slime_cream)), " s ", " b ", " s ", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'b', (Item)Item.itemRegistry.getObject("blaze_powder"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, slime_cream)), "s  ", " b ", "  s", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'b', (Item)Item.itemRegistry.getObject("blaze_powder"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, slime_cream)), "  s", " b ", "s  ", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'b', (Item)Item.itemRegistry.getObject("blaze_powder"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, slime_cream), 2), " s ", "sbs", " s ", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'b', (Item)Item.itemRegistry.getObject("blaze_rod"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, slime_cream), 2), "s s", " b ", "s s", 's', (Item)Item.itemRegistry.getObject("slime_ball"), 'b', (Item)Item.itemRegistry.getObject("blaze_rod"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, little_high_adhesive)), "bbb", "bhb", "bbb", 'b', (Item)Item.itemRegistry.getObject("blaze_powder"), 'h', GameRegistry.findItem(Core.modid, high_adhesive));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, little_high_adhesive)), " b ", "bhb", " b ", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 'h', GameRegistry.findItem(Core.modid, high_adhesive));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, little_high_adhesive)), "b b", " h ", "b b", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 'h', GameRegistry.findItem(Core.modid, high_adhesive));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(Core.modid, very_high_adhesive)), "sss", "shs", "sss", 's', GameRegistry.findItem(Core.modid, slime_cream), 'h', GameRegistry.findItem(Core.modid, little_high_adhesive));
+			*/
+		}
+		else
 		{
-			public Item getTabIconItem()
-			{
-				return Item.getItemFromBlock(GameRegistry.findBlock(modid, type[3] + "_blockDiamond"));
-			}
-		};
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_magma_cream)), "bbb", "bsb", "bbb", 'b', (Item)Item.itemRegistry.getObject("blaze_powder"), 's', (Item)Item.itemRegistry.getObject("slime_ball"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_magma_cream)), " b ", "bsb", " b ", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 's', (Item)Item.itemRegistry.getObject("slime_ball"));
+			GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findItem(modid, high_magma_cream)), "b b", " s ", "b b", 'b', (Item)Item.itemRegistry.getObject("blaze_rod"), 's', (Item)Item.itemRegistry.getObject("slime_ball"));
+		}
 		
-		/** Registration high compressed blocks */
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], bedrock, Material.rock)).setCreativeTab(tab_hc_block).setBlockUnbreakable().setResistance((float) (Math.pow(8, type_num[3]) * 6000000.0F)).setStepSound(Block.soundTypePiston).setBlockName(bedrock).setBlockTextureName(modid + ":" + type[3] + "/" + bedrock), ItemBlockCompressed.class, type[3] + "_" + bedrock);
-		GameRegistry.registerBlock((new BlockCompressedStoneBrick(type_num[3], stonebrick)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stonebrick + "smooth").setBlockTextureName(modid + ":" + type[3] + "/" + stonebrick), ItemBlockCompressedWithMetadata.class, type[3] + "_" + stonebrick + "smooth");
-		GameRegistry.registerBlock((new BlockCompressedStone(type_num[3], stone, Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.5F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(stone).setBlockTextureName(modid + ":" + type[3] + "/" + stone), ItemBlockCompressed.class, type[3] + "_" + stone);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], cobblestone[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 80.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone[1]).setBlockTextureName(modid + ":" + type[3] + "/" + cobblestone[0]), ItemBlockCompressed.class, type[3] + "_" + cobblestone[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], cobblestone_mossy[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(cobblestone_mossy[1]).setBlockTextureName(modid + ":" + type[3] + "/" + cobblestone_mossy[2]), ItemBlockCompressed.class, type[3] + "_" + cobblestone_mossy[1]);
-		GameRegistry.registerBlock((new BlockCompressedGravel(type_num[3], gravel)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(gravel).setBlockTextureName(modid + ":" + type[3] + "/" + gravel), ItemBlockCompressed.class, type[3] + "_" + gravel);
-		GameRegistry.registerBlock((new BlockCompressedDirt(type_num[3], dirt, Material.ground)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.5F)).setStepSound(Block.soundTypeGravel).setBlockName(dirt + ".default").setBlockTextureName(modid + ":" + type[3] + "/" + dirt), ItemBlockCompressed.class, type[3] + "_" + dirt + ".default");
-		GameRegistry.registerBlock((new BlockCompressedSand(type_num[3],modid + ":" + type[3] + "/")).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(sand).setBlockTextureName(modid + ":" + type[3] + "/" + sand), ItemBlockCompressedWithMetadata.class, type[3] + "_" + sand);
-		GameRegistry.registerBlock((new BlockCompressedSandStone(type_num[3], sandstone[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(sandstone[1]).setBlockTextureName(modid + ":" + type[3] + "/" + sandstone[0]), ItemBlockCompressedWithMetadata.class, type[3] + "_" + sandstone[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], end_stone[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 15.0F)).setStepSound(Block.soundTypePiston).setBlockName(end_stone[1]).setBlockTextureName(modid + ":" + type[3] + "/" + end_stone[0]), ItemBlockCompressed.class, type[3] + "_" + end_stone[1]);
-		GameRegistry.registerBlock((new BlockCompressedWood(type_num[3], wood[1])).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypeWood).setBlockName(wood[0]).setBlockTextureName(modid + ":" + type[3] + "/" + wood[1]), ItemBlockCompressedWithMetadata.class, type[3] + "_" + wood[0]);
-		GameRegistry.registerBlock((new BlockCompressedBookshelf(type_num[3], bookshelf, Material.wood)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.5F)).setStepSound(Block.soundTypeWood).setBlockName(bookshelf).setBlockTextureName(modid + ":" + type[3] + "/" + bookshelf), ItemBlockCompressed.class, type[3] + "_" + bookshelf);
-		GameRegistry.registerBlock((new BlockCompressedOldLog(type_num[3], log, Material.wood)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[3] + "/" + log), ItemBlockCompressedWithMetadata.class, type[3] + "_" + log);
-		GameRegistry.registerBlock((new BlockCompressedNewLog(type_num[3], log + "2", Material.wood)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setStepSound(Block.soundTypeWood).setBlockName(log).setBlockTextureName(modid + ":" + type[3] + "/" + log), ItemBlockCompressedWithMetadata.class, type[3] + "_" + log + "2");
-		GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[3], pumpkin, Material.gourd, false)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(pumpkin).setBlockTextureName(modid + ":" + type[3] + "/" + pumpkin), ItemBlockCompressed.class, type[3] + "_" + pumpkin);
-		GameRegistry.registerBlock((new BlockCompressedPumpkin(type_num[3], "lit_" + pumpkin, Material.gourd, true)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.0F)).setLightLevel(1.0F).setStepSound(Block.soundTypeWood).setBlockName("lit" + pumpkin).setBlockTextureName(modid + ":" + type[3] + "/" + pumpkin), ItemBlockCompressed.class, type[3] + "_lit" + pumpkin);
-		GameRegistry.registerBlock((new BlockCompressedMelon(type_num[3], melon, Material.gourd)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.0F)).setStepSound(Block.soundTypeWood).setBlockName(melon).setBlockTextureName(modid + ":" + type[3] + "/" + melon), ItemBlockCompressed.class, type[3] + "_" + melon);
-		GameRegistry.registerBlock((new BlockCompressedSponge(type_num[3], sponge, Material.sponge)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.6F)).setStepSound(Block.soundTypeGrass).setBlockName(sponge).setBlockTextureName(modid + ":" + type[3] + "/" + sponge), ItemBlockCompressed.class, type[3] + "_" + sponge);
-		GameRegistry.registerBlock((new BlockCompressedGlass(type_num[3], modid + ":" + type[3] + "/" + glass, Material.glass, false)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(glass).setBlockTextureName(modid + ":" + type[3] + "/" + glass), ItemBlockCompressed.class, type[3] + "_" + glass);
-		GameRegistry.registerBlock((new BlockCompressedStainedGlass(type_num[3], stained_glass[2], Material.glass)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(stained_glass[1]).setBlockTextureName(modid + ":" + type[3] + "/" + stained_glass[2]), ItemBlockCompressedWithMetadata.class, type[3] + "_" + stained_glass[1]);
-		GameRegistry.registerBlock((new BlockCompressedWool(type_num[3],wool[0], Material.cloth)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.6F)).setStepSound(Block.soundTypeCloth).setBlockName(wool[1]).setBlockTextureName(modid + ":" + type[3] + "/" + wool[0] + "_colored"), ItemBlockCompressedWithMetadata.class, type[3] + "_" + wool[1]);
-		GameRegistry.registerBlock((new BlockCompressedTNT(type_num[3], tnt, Material.tnt)).setCreativeTab(tab_hc_block).setHardness(0.0F).setStepSound(Block.soundTypeGrass).setBlockName(tnt).setBlockTextureName(modid + ":" + type[3] + "/" + tnt), ItemBlockCompressed.class, type[3] + "_" + tnt);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[3], redstone_lamp[0], Material.redstoneLight, false)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[3] + "/" + redstone_lamp[0] + "_off"), ItemBlockCompressed.class, type[3] + "_" + redstone_lamp[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneLight(type_num[3], "lit_" + redstone_lamp[0], Material.redstoneLight, true)).setHardness((float) (Math.pow(8, type_num[3]) * 0.3F)).setStepSound(Block.soundTypeGlass).setBlockName(redstone_lamp[1]).setBlockTextureName(modid + ":" + type[3] + "/" + redstone_lamp[0] + "_on"), ItemBlockCompressed.class, type[3] + "_lit_" + redstone_lamp[1]);
-		GameRegistry.registerBlock((new BlockCompressedGlowstone(type_num[3], glowstone[0], Material.glass)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.3F)).setStepSound(Block.soundTypeGlass).setLightLevel(1.0F).setBlockName(glowstone[1]).setBlockTextureName(modid + ":" + type[3] + "/" + glowstone[0]), ItemBlockCompressed.class, type[3] + "_" + glowstone[1]);
-		GameRegistry.registerBlock((new BlockCompressedSoulSand(type_num[3], soul_sand[0], Material.sand)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.5F)).setStepSound(Block.soundTypeSand).setBlockName(soul_sand[1]).setBlockTextureName(modid + ":" + type[3] + "/" + soul_sand[0]), ItemBlockCompressed.class, type[3] + "_" + soul_sand[1]);
-		GameRegistry.registerBlock((new BlockCompressedObsidian(type_num[3], obsidian, Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 2000.0F)).setStepSound(Block.soundTypePiston).setBlockName(obsidian).setBlockTextureName(modid + ":" + type[3] + "/" + obsidian), ItemBlockCompressed.class, type[3] + "_" + obsidian);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], nether_brick[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(nether_brick[1]).setBlockTextureName(modid + ":" + type[3] + "/" + nether_brick[0]), ItemBlockCompressed.class, type[3] + "_" + nether_brick[1]);
-		GameRegistry.registerBlock((new BlockCompressedNetherrack(type_num[3], netherrack[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.4F)).setStepSound(Block.soundTypePiston).setBlockName(netherrack[1]).setBlockTextureName(modid + ":" + type[3] + "/" + netherrack[0]), ItemBlockCompressed.class, type[3] + "_" + netherrack[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], quartz_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + quartz_ore[0]), ItemBlockCompressed.class, type[3] + "_" + quartz_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedQuartz(type_num[3], quartz_block[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.8F)).setStepSound(Block.soundTypePiston).setBlockName(quartz_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + quartz_block[0]), ItemBlockCompressedWithMetadata.class, type[3] + "_" + quartz_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedSnowBlock(type_num[3], snow, Material.craftedSnow)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.2F)).setStepSound(Block.soundTypeSnow).setBlockName(snow).setBlockTextureName(modid + ":" + type[3] + "/" + snow), ItemBlockCompressed.class, type[3] + "_" + snow);
-		GameRegistry.registerBlock((new BlockCompressedIce(type_num[3], modid + ":" + type[3] + "/" + ice, Material.ice)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.5F)).setLightOpacity(6 - type_num[1] * 2).setStepSound(Block.soundTypeGlass).setBlockName(ice).setBlockTextureName(modid + ":" + type[3] + "/" + ice), ItemBlockCompressed.class, type[3] + "_" + ice);
-		GameRegistry.registerBlock((new BlockCompressedPackedIce(type_num[3], ice_packed[0], Material.packedIce)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.5F)).setStepSound(Block.soundTypeGlass).setBlockName(ice_packed[1]).setBlockTextureName(modid + ":" + type[3] + "/" + ice_packed[2]), ItemBlockCompressed.class, type[3] + "_" + ice_packed[1]);
-		GameRegistry.registerBlock((new BlockCompressedClay(type_num[3], clay, Material.clay)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 0.6F)).setStepSound(Block.soundTypeGravel).setBlockName(clay).setBlockTextureName(modid + ":" + type[3] + "/" + clay), ItemBlockCompressed.class, type[3] + "_" + clay);
-		GameRegistry.registerBlock((new BlockCompressedClayHardened(type_num[3], hardened_clay[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[3]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay[1]).setBlockTextureName(modid + ":" + type[3] + "/" + hardened_clay[0]), ItemBlockCompressed.class, type[3] + "_" + hardened_clay[1]);
-		GameRegistry.registerBlock((new BlockCompressedClayHardenedStained(type_num[3], hardened_clay_stained[2], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 1.25F)).setResistance((float) (Math.pow(8, type_num[3]) * 7.0F)).setStepSound(Block.soundTypePiston).setBlockName(hardened_clay_stained[1]).setBlockTextureName(modid + ":" + type[3] + "/" + hardened_clay_stained[0]), ItemBlockCompressedWithMetadata.class, type[3] + "_" + hardened_clay_stained[1]);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], brick + "_block", Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 2.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(brick).setBlockTextureName(modid + ":" + type[3] + "/" + brick), ItemBlockCompressed.class, type[3] + "_" + brick);
-		GameRegistry.registerBlock((new BlockCompressed(type_num[3], coal_block[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 50.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + coal_block[0]), ItemBlockCompressed.class, type[3] + "_" + coal_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[3], iron_block[0], MapColor.ironColor)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(iron_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + iron_block[0]), ItemBlockCompressed.class, type[3] + "_" + iron_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[3], gold_block[0], MapColor.goldColor)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(gold_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + gold_block[0]), ItemBlockCompressed.class, type[3] + "_" + gold_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[3], diamond_block[0], MapColor.diamondColor)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(diamond_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + diamond_block[0]), ItemBlockCompressed.class, type[3] + "_" + diamond_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[3], lapis_block[0], MapColor.lapisColor)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + lapis_block[0]), ItemBlockCompressed.class, type[3] + "_" + lapis_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressed(type_num[3], emerald_block[0], MapColor.emeraldColor)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(emerald_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + emerald_block[0]), ItemBlockCompressed.class, type[3] + "_" + emerald_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedCompressedPowered(type_num[3], redstone_block[0], MapColor.tntColor)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 5.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 10.0F)).setStepSound(Block.soundTypeMetal).setBlockName(redstone_block[1]).setBlockTextureName(modid + ":" + type[3] + "/" + redstone_block[0]), ItemBlockCompressed.class, type[3] + "_" + redstone_block[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], coal_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(coal_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + coal_ore[0]), ItemBlockCompressed.class, type[3] + "_" + coal_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], iron_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(iron_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + iron_ore[0]), ItemBlockCompressed.class, type[3] + "_" + iron_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], gold_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(gold_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + gold_ore[0]), ItemBlockCompressed.class, type[3] + "_" + gold_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], diamond_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(diamond_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + diamond_ore[0]), ItemBlockCompressed.class, type[3] + "_" + diamond_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], lapis_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(lapis_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + lapis_ore[0]), ItemBlockCompressed.class, type[3] + "_" + lapis_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedOre(type_num[3], emerald_ore[0], Material.rock)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(emerald_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + emerald_ore[0]), ItemBlockCompressed.class, type[3] + "_" + emerald_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[3], redstone_ore[0], Material.rock, false)).setCreativeTab(tab_hc_block).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[3] + "_" + redstone_ore[1]);
-		GameRegistry.registerBlock((new BlockCompressedRedstoneOre(type_num[3], "lit_" + redstone_ore[0], Material.rock, true)).setLightLevel(type_num[3] * 0.125F + 0.625F).setHardness((float) (Math.pow(8, type_num[3]) * 3.0F)).setResistance((float) (Math.pow(8, type_num[3]) * 5.0F)).setStepSound(Block.soundTypePiston).setBlockName(redstone_ore[1]).setBlockTextureName(modid + ":" + type[3] + "/" + redstone_ore[0]), ItemBlockCompressed.class, type[3] + "_lit_" + redstone_ore[1]);
+		/** Crafting Compressed blocks or not */
+		for (int i = 1; i <= 3; ++i)
+		{
+			if ((i == 1 && (ConfigAvailableLCB == false || ConfigCraftingLCB == false)) || (i == 2 && (ConfigAvailableMCB == false || ConfigCraftingMCB == false)) || (i == 1 && (ConfigAvailableHCB == false || ConfigCraftingHCB == false)))
+			{
+				i += 1;
+			}
+				
+			if (i > 0 && i <= 3)
+			{
+				for (int j = 1; j < blocks.length; ++j)
+				{
+					if (blocks[j][0] == null)
+					{
+						GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2])), "bbb", "bab", "bbb", 'b', i == 1 ? (Block)Block.blockRegistry.getObject(blocks[j][1]) : GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 'a', ConfigEasyCraftingLCB == false ? GameRegistry.findItem(modid, items[i][0]) : (i == 3 ? GameRegistry.findItem(modid, items[i][1]) : (Item)Item.itemRegistry.getObject(items[i][1])));
+					}
+					else
+					{
+						for (int k = 0; k < Integer.parseInt(blocks[j][0]); ++k)
+						{
+							GameRegistry.addShapedRecipe(new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k), "bbb", "bab", "bbb", 'b', i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 1, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 1, k), 'a', ConfigEasyCraftingLCB == false ? GameRegistry.findItem(modid, items[i][0]) : (i == 3 ? GameRegistry.findItem(modid, items[i][1]) : (Item)Item.itemRegistry.getObject(items[i][1])));							
+						}
+					}
+				}
+			}
+		}
+		
+		/** Uncrafting Compressed blocks or not */
+		for (int i = 1; i <= 3; ++i)
+		{
+			if (i == 1 && ConfigUnCraftingLCB == -1 || i == 2 && ConfigUnCraftingMCB == -1 || i == 1 && ConfigUnCraftingHCB == -1)
+			{
+				i += 1;
+			}
+				
+			if (i > 0 && i <= 3)
+			{
+				for (int j = 1; j < blocks.length; ++j)
+				{
+					if ((i == 1 && ConfigUnCraftingLCB == 0) || (i == 2 && ConfigUnCraftingMCB == 0) || (i == 3 && ConfigUnCraftingHCB == 0))
+					{
+						if (blocks[j][0] == null)
+						{
+							GameRegistry.addShapelessRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2])), GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]));
+						}
+						else
+						{
+							for (int k = 0; k < Integer.parseInt(blocks[j][0]); ++k)
+							{
+								GameRegistry.addShapelessRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 8, k), new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k));	
+							}
+						}
+					}
+					else if (((i == 1 && ConfigUnCraftingLCB == 1) || (i == 2 && ConfigUnCraftingMCB == 1) || (i == 3 && ConfigUnCraftingHCB == 1)) || (i == 1 && (ConfigUnCraftingLCB != 2 && ConfigUnCraftingLCB != 4 && ConfigUnCraftingLCB != 8)))
+					{
+						if (blocks[j][0] == null)
+						{
+							GameRegistry.addShapelessRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2])), GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), (Item)Item.itemRegistry.getObject(items[i][2]));
+						}
+						else
+						{
+							for (int k = 0; k < Integer.parseInt(blocks[j][0]); ++k)
+							{
+								GameRegistry.addShapelessRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 8, k), new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k), (Item)Item.itemRegistry.getObject(items[i][2]));					
+							}
+						}
+					}
+					else if ((i == 1 && ConfigUnCraftingLCB == 2) || (i == 2 && ConfigUnCraftingMCB == 2) || (i == 3 && ConfigUnCraftingHCB == 2))
+					{
+						if (blocks[j][0] == null)
+						{
+							GameRegistry.addShapelessRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2])), GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), (Item)Item.itemRegistry.getObject(items[i][2]), (Item)Item.itemRegistry.getObject(items[i][2]));
+						}
+						else
+						{
+							for (int k = 0; k < Integer.parseInt(blocks[j][0]); ++k)
+							{
+								GameRegistry.addShapelessRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 8, k), new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k), (Item)Item.itemRegistry.getObject(items[i][2]), (Item)Item.itemRegistry.getObject(items[i][2]));				
+							}
+						}
+					}
+					else if (((i == 1 && ConfigUnCraftingLCB == 4) || (i == 2 && ConfigUnCraftingMCB == 4) || (i == 3 && ConfigUnCraftingHCB == 4)) || (i == 2 && (ConfigUnCraftingMCB != 4 && ConfigUnCraftingMCB != 8)))
+					{
+						if (blocks[j][0] == null)
+						{
+							GameRegistry.addShapedRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2])), " b ", "bcb", " b ", 'c', GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 'b', (Item)Item.itemRegistry.getObject(items[i][2]));
+							GameRegistry.addShapedRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2])), "b b", " c ", "b b", 'c', GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 'b', (Item)Item.itemRegistry.getObject(items[i][2]));
+						}
+						else
+						{
+							for (int k = 0; k < Integer.parseInt(blocks[j][0]); ++k)
+							{
+								GameRegistry.addShapedRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 8, k), " b ", "bcb", " b ", 'c', new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k), 'b', (Item)Item.itemRegistry.getObject(items[i][2]));					
+								GameRegistry.addShapedRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 8, k), "b b", " c ", "b b", 'c', new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k), 'b', (Item)Item.itemRegistry.getObject(items[i][2]));					
+							}
+						}
+					}
+					else if (((i == 1 && ConfigUnCraftingLCB == 8) || (i == 2 && ConfigUnCraftingMCB == 8) || (i == 3 && ConfigUnCraftingHCB == 8)) || (i == 3 && ConfigUnCraftingHCB != 8))
+					{
+						if (blocks[j][0] == null)
+						{
+							GameRegistry.addShapedRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2])), " b ", "bcb", " b ", 'c', GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 'b', (Item)Item.itemRegistry.getObject(items[i][2]));
+						}
+						else
+						{
+							for (int k = 0; k < Integer.parseInt(blocks[j][0]); ++k)
+							{
+								GameRegistry.addShapedRecipe(i == 1 ? new ItemStack((Block)Block.blockRegistry.getObject(blocks[j][1]), 8, k) : new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i-1] + "_" + blocks[j][1] : type[i-1] + "_" + blocks[j][2]), 8, k), " b ", "bcb", " b ", 'c', new ItemStack(GameRegistry.findBlock(modid, blocks[j][2] == null ? type[i] + "_" + blocks[j][1] : type[i] + "_" + blocks[j][2]), 1, k), 'b', (Item)Item.itemRegistry.getObject(items[i][2]));					
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		/** Smelting compressed blocks or not */
+		for (int i = 1; i <= 3; ++i)
+		{
+			if ((i == 1 && (ConfigAvailableLCB == false || ConfigSmeltingLCB == false)) || (i == 2 && (ConfigAvailableMCB == false || ConfigSmeltingMCB == false)) || (i == 1 && (ConfigAvailableHCB == false || ConfigSmeltingHCB == false)))
+			{
+				i += 1;
+			}
+				
+			if (i > 0 && i <= 3)
+			{
+				for (int k = 0; k <= 1; ++k)
+				{
+					for (int j = 1; j < smelt[k].length; ++j)
+					{
+						if (smelt[k][j][0] == null)
+						{
+							GameRegistry.addSmelting(GameRegistry.findBlock(modid, type[i] + "_" + smelt[k][j][1]), k == 0 ? new ItemStack(GameRegistry.findBlock(modid, type[i] + "_" + smelt[k][j][2])) : new ItemStack((Item)Item.itemRegistry.getObject(smelt[k][j][2]), (int) Math.pow(8, type_num[i])), Float.parseFloat(smelt[k][j][3]));
+						}
+						else
+						{
+							GameRegistry.addSmelting(GameRegistry.findBlock(modid, type[i] + "_" + smelt[k][j][1]), new ItemStack((Item)Item.itemRegistry.getObject(smelt[k][j][2]), (int) Math.pow(8, type_num[i]), Integer.parseInt(smelt[k][j][0])), Float.parseFloat(smelt[k][j][3]));				
+						}
+					}
+				}
+			}
+		}
 	}
 }
